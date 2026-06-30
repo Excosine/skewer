@@ -14,10 +14,7 @@ dist/
 runs/
 
 # Debug output
-debug_output.png
+backend/debug_output.png
 
 # Dataset images (large files)
-dataset/images/
-
-# Model weights (6+ MB, uncomment if you don't want to track)
-# models/*.pt
+backend/dataset/images/
