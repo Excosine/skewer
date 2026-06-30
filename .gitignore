@@ -9,6 +9,7 @@ dist/
 
 # IDE
 .idea/
+*.iml
 
 # Training artifacts
 runs/
