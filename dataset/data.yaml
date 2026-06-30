@@ -1,0 +1,6 @@
+path: D:/code/lessiondesign/dataset
+train: images/train
+val: images/val
+
+nc: 1
+names: ["bamboo"]

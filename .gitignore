@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+
+# Virtual environment
+.venv/
+
+# IDE
+.idea/
+
+# Training artifacts
+runs/
+
+# Debug output
+debug_output.png
+
+# Dataset images (large files)
+dataset/images/
+
+# Model weights (6+ MB, uncomment if you don't want to track)
+# models/*.pt
