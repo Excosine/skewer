@@ -135,10 +135,38 @@ CREATE TABLE order_items (
 );
 
 -- ============================================================
+-- 9. 操作日志表
+-- 记录管理员的关键操作（调价、员工管理、强制结账等）
+-- ============================================================
+CREATE TABLE operation_logs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         INTEGER NOT NULL REFERENCES users(id),   -- 操作人
+    operation_type  VARCHAR(32) NOT NULL,                    -- 操作类型
+    target_type     VARCHAR(32),                              -- 操作对象类型（skewer/user/order）
+    target_id       INTEGER,                                  -- 操作对象ID
+    detail          TEXT,                                     -- 操作详情JSON
+    ip_address      VARCHAR(64),                              -- 操作IP地址
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 操作类型枚举（应用层约定）：
+-- 'price_adjust'     调价
+-- 'skewer上架'       上架签子
+-- 'skewer下架'       下架签子
+-- 'user_create'      新增员工
+-- 'user_update'      编辑员工
+-- 'user_disable'     禁用员工
+-- 'user_enable'      启用员工
+-- 'order_close'      强制结账
+
+-- ============================================================
 -- 索引
 -- ============================================================
 CREATE INDEX idx_orders_table  ON orders(table_id, status);
 CREATE INDEX idx_orders_waiter ON orders(waiter_id, created_at);
+CREATE INDEX idx_operation_logs_user ON operation_logs(user_id, created_at);
+CREATE INDEX idx_operation_logs_type ON operation_logs(operation_type, created_at);
+CREATE INDEX idx_operation_logs_time ON operation_logs(created_at DESC);
 
 
 -- ============================================================

@@ -128,3 +128,25 @@ class OrderItem(Base):
     __table_args__ = (
         UniqueConstraint("order_id", "skewer_type_id"),
     )
+
+
+class OperationLog(Base):
+    __tablename__ = "operation_logs"
+
+    id              = Column(Integer, primary_key=True, autoincrement=True)
+    user_id         = Column(Integer, ForeignKey("users.id"), nullable=False)
+    operation_type  = Column(String(32), nullable=False)
+    target_type     = Column(String(32), nullable=True)
+    target_id       = Column(Integer, nullable=True)
+    target_name     = Column(String(128), nullable=True)
+    detail          = Column(String(512), nullable=True)
+    ip_address      = Column(String(64), nullable=True)
+    created_at      = Column(DateTime, default=datetime.utcnow, server_default=text("CURRENT_TIMESTAMP"))
+
+    user = relationship("User")
+
+    __table_args__ = (
+        Index("idx_operation_logs_user", "user_id", "created_at"),
+        Index("idx_operation_logs_type", "operation_type", "created_at"),
+        Index("idx_operation_logs_time", "created_at"),
+    )

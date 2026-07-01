@@ -8,6 +8,7 @@ from db.queries import (
     list_tables_status,
     get_table_detail,
     update_table_status,
+    reset_table_status
 )
 from routes._deps import current_user
 
@@ -43,3 +44,14 @@ def update_table(table_id: int, body: UpdateTableBody, _user=Depends(current_use
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {"status": "ok"}
+
+@router.put("/{table_code}/reset")
+def reset_table(table_code: str, _user=Depends(current_user)):
+    """强制结账后，将清洁中桌子重置为空闲"""
+    db = get_session()
+    try:
+        reset_table_status(db, table_code)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"status": "ok"}
+

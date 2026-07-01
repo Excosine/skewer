@@ -17,6 +17,7 @@ from db.queries import (
     update_order_item_count,
     delete_order_item,
     close_order,
+    record_log,
 )
 from routes._deps import current_user
 from services.detection import detect_sticks
@@ -80,7 +81,12 @@ def get_one(order_id: int, _user=Depends(current_user)):
 def close(order_id: int, _user=Depends(current_user)):
     db = get_session()
     try:
+        order = get_order(db, order_id)
         close_order(db, order_id)
+        record_log(db, int(_user["sub"]), "order_close",
+                   target_type="order", target_id=order_id,
+                   target_name=f"桌号 {order.table.table_code}" if order and order.table else "",
+                   detail=f"强制结账: 总额 ¥{float(order.total_price) if order else 0}")
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {"status": "ok"}

@@ -2,9 +2,11 @@
 
 import os
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import NullPool
 
 from .models import Base
 
@@ -26,6 +28,7 @@ def init_db(db_path: str | None = None) -> None:
     global _engine, _Session, _db_url
 
     _db_url = _build_url(db_path)
+    # _engine = create_engine(_db_url, echo=False, poolclass=NullPool)
     _engine = create_engine(_db_url, echo=False)
 
     if _db_url.startswith("sqlite"):
@@ -102,6 +105,118 @@ def init_db(db_path: str | None = None) -> None:
                 SkewerType(category_id=5, name="馒头片",   price=1.00, sort_order=1),
                 SkewerType(category_id=5, name="年糕",     price=2.00, sort_order=2),
             ])
+            s.commit()
+
+            # ── 历史订单数据（近30天） ──
+            from .models import Order, OrderItem
+            import random
+
+            skewers = s.query(SkewerType).all()  # 全部签子类型
+            tables_all = s.query(Table).all()     # 全部桌子
+
+            history_days = 30
+            for day_offset in range(1, history_days + 1):
+                # 每天 1~3 笔订单
+                daily_orders_count = random.randint(1, 3)
+                used_tables = set()
+
+                for _ in range(daily_orders_count):
+                    # 随机选桌子（避开重复）
+                    available = [t for t in tables_all if t.id not in used_tables]
+                    if not available:
+                        break
+                    tbl = random.choice(available)
+                    used_tables.add(tbl.id)
+
+                    # 随机 2~4 种签子
+                    item_count = random.randint(2, 4)
+                    chosen = random.sample(skewers, item_count)
+
+                    total_count = 0
+                    items_total = 0.0
+                    items_data = []
+                    for sk in chosen:
+                        cnt = random.randint(5, 30)
+                        subtotal = round(cnt * float(sk.price), 2)
+                        total_count += cnt
+                        items_total += subtotal
+                        items_data.append((sk.id, cnt, subtotal))
+
+                    zone_fee = float(random.choice([0, 0, 0, 5, 10, 10]))
+                    total_price = round(items_total + zone_fee, 2)
+
+                    paid_date = (datetime.utcnow() - timedelta(days=day_offset)).replace(
+                        hour=random.randint(10, 22), minute=random.randint(0, 59), second=0
+                    )
+                    waiter_id = random.choice([1, 2])
+
+                    order = Order(
+                        order_no=f"{paid_date:%Y%m%d}{paid_date:%H%M%S}-{tbl.id}",
+                        table_id=tbl.id,
+                        waiter_id=waiter_id,
+                        zone_surcharge=zone_fee,
+                        total_count=total_count,
+                        total_price=total_price,
+                        status=1,  # 已结账
+                        paid_at=paid_date,
+                        created_at=paid_date,
+                        updated_at=paid_date,
+                    )
+                    s.add(order)
+                    s.flush()
+
+                    for sid, cnt, subtotal in items_data:
+                        s.add(OrderItem(
+                            order_id=order.id,
+                            skewer_type_id=sid,
+                            count=cnt,
+                            unit_price=float(s.query(SkewerType).get(sid).price),
+                            subtotal=subtotal,
+                        ))
+
+            s.commit()
+
+            # ── 测试订单数据 ──
+
+            orders_data = [
+                # (table_id, waiter_id, zone_surcharge, [(skewer_type_id, count), ...])
+                (1, 2, 0.00, [(1, 15), (2, 10), (8, 5)]),           # A01: 牛肉15+羊肉10+韭菜5
+                (3, 2, 0.00, [(1, 20), (14, 10), (9, 8)]),           # A03: 牛肉20+鱿鱼10+金针菇8
+                (4, 2, 10.00, [(1, 30), (2, 20), (14, 15), (8, 10)]),# B01: 牛肉30+羊肉20+鱿鱼15+韭菜10
+                (6, 2, 5.00, [(1, 18), (2, 12), (14, 8)]),           # C01: 牛肉18+羊肉12+鱿鱼8
+            ]
+
+            for table_id, waiter_id, zone_fee, items in orders_data:
+                # 计算 total
+                total_count = sum(c for _, c in items)
+                items_total = sum(c * (float(s.query(SkewerType).get(sid).price)) for sid, c in items)
+                total_price = items_total + zone_fee
+
+                order = Order(
+                    order_no=f"20260701-{random.randint(100,999)}",
+                    table_id=table_id,
+                    waiter_id=waiter_id,
+                    zone_surcharge=zone_fee,
+                    total_count=total_count,
+                    total_price=total_price,
+                    status=0,
+                )
+                s.add(order)
+                s.flush()
+
+                for sid, cnt in items:
+                    sk = s.query(SkewerType).get(sid)
+                    s.add(OrderItem(
+                        order_id=order.id,
+                        skewer_type_id=sid,
+                        count=cnt,
+                        unit_price=sk.price,
+                        subtotal=float(sk.price) * cnt,
+                    ))
+
+                # 设置桌子为占用
+                s.query(Table).filter(Table.id == table_id).update({"status": 1})
+
             s.commit()
 
 
