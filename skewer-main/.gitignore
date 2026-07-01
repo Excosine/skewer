@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+
+# Virtual environment
+.venv/
+
+# IDE
+.idea/
+*.iml
+
+# Training artifacts
+runs/
+
+# Debug output
+backend/debug_output.png
+
+# Runtime data
+backend/runtime/*
+!backend/runtime/data.db
+
+# Dataset images (large files)
+backend/dataset/

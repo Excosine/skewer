@@ -1,0 +1,121 @@
+// ============================================================
+// 公共样式类 · 火锅串串轻奢烟火高级风
+// ============================================================
+
+@import './variables.scss';
+
+// 页面容器
+.page-container {
+  padding: $spacing-xl $spacing-lg;
+  min-width: 1032px;
+}
+
+// 页面标题 - 渐变文字效果
+.page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: $text-heading;
+  margin-bottom: $spacing-lg;
+  letter-spacing: 2px;
+  background: linear-gradient(to right, #D94836, #E6B87D);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// 区块标题
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: $text-primary;
+  margin-bottom: $spacing-md;
+}
+
+// 卡片样式 - 磨砂玻璃质感
+.card {
+  background: rgba(26, 21, 18, 0.6);
+  border: 1px solid $border-default;
+  border-radius: $radius-lg;
+  padding: $spacing-md;
+  box-shadow: $shadow-card;
+  transition: all $transition-normal ease;
+  position: relative;
+
+  // 卡片顶部暖色点缀
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(217, 72, 54, 0.15), transparent);
+  }
+
+  &:hover {
+    border-color: rgba(242, 112, 68, 0.15);
+    box-shadow: $shadow-card-hover;
+    transform: translateY(-3px);
+  }
+}
+
+// 统计卡片全局样式
+.stat-card {
+  min-width: 200px;
+  flex: 1;
+  max-width: 280px;
+  height: 100px;
+  background: rgba(26, 21, 18, 0.6);
+  border: 1px solid $border-default;
+  border-radius: $radius-lg;
+  padding: $spacing-md $spacing-lg;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: $shadow-card;
+  transition: all $transition-normal ease;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgba(217, 72, 54, 0.15), transparent);
+  }
+
+  &:hover {
+    border-color: rgba(242, 112, 68, 0.15);
+    box-shadow: $shadow-card-hover;
+    transform: translateY(-3px);
+  }
+
+  .stat-number {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: $font-mono;
+    color: $text-primary;
+    letter-spacing: 1px;
+    background: linear-gradient(to right, #D94836, #E6B87D);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+
+    &.revenue {
+      background: linear-gradient(to right, #F27044, #E6B87D);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+  }
+
+  .stat-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: $text-secondary;
+    letter-spacing: 1px;
+  }
+}
