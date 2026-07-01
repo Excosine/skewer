@@ -19,7 +19,7 @@ backend/debug_output.png
 
 # Runtime data
 backend/runtime/*
-!backend/runtime/data.db
+#!backend/runtime/data.db
 
 # Dataset images (large files)
 backend/dataset/
@@ -28,3 +28,5 @@ frontend/node_modules
 frontend/package-lock.json
 skills/
 
+# Node
+node_modules/
