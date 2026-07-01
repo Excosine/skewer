@@ -31,6 +31,7 @@ def list_tables_status(db: Session) -> list[dict]:
             "zone_name": t.zone.name,
             "zone_surcharge": float(t.zone.surcharge),
             "table_code": t.table_code,
+            "table_id": t.id,
             "capacity": t.capacity,
             "table_status": t.status,
             "order_id": active.id if active else None,
@@ -41,6 +42,48 @@ def list_tables_status(db: Session) -> list[dict]:
             "order_created_at": active.created_at if active else None,
         })
     return result
+
+
+def get_table_detail(db: Session, table_id: int) -> dict | None:
+    table = db.query(Table).options(joinedload(Table.zone)).filter(Table.id == table_id).first()
+    if not table:
+        return None
+    orders = (
+        db.query(Order)
+        .filter(Order.table_id == table_id)
+        .order_by(Order.status.asc(), Order.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "id": table.id,
+        "table_code": table.table_code,
+        "zone_name": table.zone.name,
+        "zone_surcharge": float(table.zone.surcharge),
+        "capacity": table.capacity,
+        "status": table.status,
+        "orders": [
+            {
+                "id": o.id,
+                "order_no": o.order_no,
+                "status": o.status,
+                "total_count": o.total_count,
+                "total_price": float(o.total_price),
+                "paid_at": o.paid_at.isoformat() if o.paid_at else None,
+            }
+            for o in orders
+        ],
+    }
+
+
+def update_table_status(db: Session, table_id: int, status: int):
+    table = db.query(Table).filter(Table.id == table_id).first()
+    if table is None:
+        raise ValueError("桌子不存在")
+    if table.status != 2 or status != 0:
+        raise ValueError("仅允许清洁 → 空闲")
+    table.status = 0
+    db.commit()
 
 
 # ── menu ──────────────────────────────────────

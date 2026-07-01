@@ -201,11 +201,69 @@ def test_admin_user_update():
     assert r.status_code == 200
     assert r.json()["real_name"] == "小李"
 
-    # username cannot be changed (no field in body)
+    # restore original password for subsequent tests
+    r = client.put("/api/admin/users/2", json={"password": "123456"}, headers=hdrs)
+    assert r.status_code == 200
+
     # waiter cannot access admin endpoints
+    r = client.post("/api/auth/login", json={"username": "waiter01", "password": "123456"})
     waiter_token = r.json()["token"]
     r = client.get("/api/admin/users", headers=_auth(waiter_token))
     assert r.status_code == 403
+
+
+def test_table_detail():
+    token = test_login_and_auth()
+    hdrs = _auth(token)
+
+    r = client.get("/api/tables/1", headers=hdrs)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["table_code"] == "A01"
+    assert "orders" in data
+    assert data["zone_name"] == "大厅"
+
+
+def test_table_clean_to_idle():
+    token = test_login_and_auth()
+    hdrs = _auth(token)
+
+    # create and close an order to make table status=2
+    r = client.post("/api/orders", json={"table_id": 3}, headers=hdrs)
+    oid = r.json()["id"]
+    client.post(f"/api/orders/{oid}/items", json={"skewer_type_id": 1}, headers=hdrs)
+    client.post(f"/api/orders/{oid}/close", headers=hdrs)
+
+    # table should be status=2 now, PUT should set to 0
+    r = client.put("/api/tables/3", json={"status": 0}, headers=hdrs)
+    assert r.status_code == 200
+
+    # refuse non-2→0 transition (use a table that hasn't been touched)
+    r = client.put("/api/tables/7", json={"status": 0}, headers=hdrs)
+    assert r.status_code == 400
+
+
+def test_add_item_returns_real_count():
+    token = test_login_and_auth()
+    hdrs = _auth(token)
+
+    r = client.post("/api/orders", json={"table_id": 2}, headers=hdrs)
+    oid = r.json()["id"]
+
+    # first add → count=0
+    r = client.post(f"/api/orders/{oid}/items", json={"skewer_type_id": 1}, headers=hdrs)
+    assert r.status_code == 200
+    item_id = r.json()["id"]
+    assert r.json()["count"] == 0
+
+    # set count to 5
+    client.put(f"/api/orders/{oid}/items/{item_id}", json={"count": 5}, headers=hdrs)
+
+    # add same skewer → should return existing id and real count=5
+    r = client.post(f"/api/orders/{oid}/items", json={"skewer_type_id": 1}, headers=hdrs)
+    assert r.status_code == 200
+    assert r.json()["id"] == item_id
+    assert r.json()["count"] == 5
 
 
 # ── runner ────────────────────────────────────
@@ -224,6 +282,9 @@ if __name__ == "__main__":
         test_admin_user_create,
         test_admin_user_list,
         test_admin_user_update,
+        test_table_detail,
+        test_table_clean_to_idle,
+        test_add_item_returns_real_count,
     ]
     for t in tests:
         name = t.__name__
@@ -231,6 +292,8 @@ if __name__ == "__main__":
             t()
             print(f"  PASS  {name}")
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"  FAIL  {name}: {e}")
 
     close_db()

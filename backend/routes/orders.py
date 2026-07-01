@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 
 from db import get_session
+from db.models import OrderItem
 from db.queries import (
     create_order,
     get_order,
@@ -94,7 +95,8 @@ def add_item(order_id: int, body: AddItemBody, _user=Depends(current_user)):
         item_id = add_order_item(db, order_id, body.skewer_type_id)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    return {"id": item_id, "count": 0}
+    item = db.query(OrderItem).filter(OrderItem.id == item_id).first()
+    return {"id": item_id, "count": item.count if item else 0}
 
 
 @router.put("/{order_id}/items/{item_id}")
