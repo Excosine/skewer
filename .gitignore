@@ -1,31 +1,25 @@
-# ===== Node =====
-node_modules/
-dist/
-*.log
-npm-debug.log*
-
-# ===== Python =====
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
+dist/
+
+# Virtual environment
 .venv/
-venv/
-env/
-*.db
-*.sqlite3
 
-# ===== IDE =====
-.vscode/
+# IDE
 .idea/
-*.swp
-*.swo
-*~
+*.iml
 
-# ===== OS =====
-.DS_Store
-Thumbs.db
+# Training artifacts
+runs/
 
-# ===== Env =====
-.env
-.env.local
-.env.*.local
+# Debug output
+backend/debug_output.png
+
+# Runtime data
+backend/runtime/*
+!backend/runtime/data.db
+
+# Dataset images (large files)
+backend/dataset/
