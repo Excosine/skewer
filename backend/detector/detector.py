@@ -37,7 +37,7 @@ class StickDetector:
         from ultralytics import YOLO
 
         model = YOLO(self._model_path)
-        results = model(image_path, conf=conf, device=1, verbose=False)
+        results = model(image_path, conf=conf, device=0, verbose=False)
         boxes = results[0].boxes
         if boxes is None:
             return []
