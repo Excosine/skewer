@@ -17,3 +17,7 @@ def _get_detector() -> StickDetector:
 
 def detect_sticks(image_path: str) -> list[dict]:
     return _get_detector().detect(image_path)
+
+
+def draw_detection(image_path: str, circles: list[dict]) -> bytes:
+    return _get_detector().draw_to_bytes(image_path, circles)

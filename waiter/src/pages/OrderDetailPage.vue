@@ -79,6 +79,34 @@
 
     <input ref="fileInput" type="file" accept="image/*" capture="environment" class="hidden" @change="onFile" />
     <MenuPicker v-if="isActive && showMenu" @select="onAdd" @close="showMenu = false" />
+
+    <!-- Scan preview modal -->
+    <Teleport to="body" v-if="scanPreview">
+      <div class="fixed inset-0 z-50 flex items-center justify-center" @click.self="closePreview">
+        <div class="absolute inset-0 bg-black/60" />
+        <div class="relative bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+          <div class="p-4">
+            <h3 class="text-sm font-semibold text-neutral-300 mb-3">识别结果确认（绿色圆圈为识别到的签子）</h3>
+            <div class="rounded-xl overflow-hidden bg-black/50 mb-4">
+              <img :src="scanPreview.imageUrl" class="w-full max-h-64 object-contain" />
+            </div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs text-neutral-500">识别数量</span>
+              <span class="text-xs text-neutral-500">置信度 {{ (scanPreview.confidence * 100).toFixed(0) }}%</span>
+            </div>
+            <div class="flex items-center justify-center gap-4 py-2 mb-4">
+              <button @click="previewCount = Math.max(0, previewCount - 1)" class="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white text-xl flex items-center justify-center hover:bg-white/10 transition-colors">−</button>
+              <span class="text-2xl font-bold font-mono text-white w-12 text-center">{{ previewCount }}</span>
+              <button @click="previewCount++" class="w-10 h-10 rounded-xl bg-white/5 border border-white/10 text-white text-xl flex items-center justify-center hover:bg-white/10 transition-colors">+</button>
+            </div>
+            <div class="flex gap-3">
+              <button @click="closePreview" class="flex-1 py-2.5 rounded-xl border border-white/10 text-neutral-400 text-sm font-medium hover:bg-white/5 transition-colors">取消</button>
+              <button @click="confirmScan" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 text-white text-sm font-semibold hover:brightness-110 transition-all">确认</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -98,6 +126,8 @@ const items = ref([]);
 const showMenu = ref(false);
 const scanningId = ref(null);
 const fileInput = ref(null);
+const scanPreview = ref(null);
+const previewCount = ref(0);
 
 const isActive = computed(() => order.value?.status === 0);
 const totalCount = computed(() => items.value.reduce((s, it) => s + it.count, 0));
@@ -137,12 +167,50 @@ async function onFile(e) {
   const f = e.target.files[0];
   if (!f) return;
   const id = Number(fileInput.value.dataset.itemId);
+  const item = items.value.find(it => it.item_id === id);
+  const prevCount = item?.count || 0;
   scanningId.value = id;
   try {
     const r = await api.scanItem(route.params.id, id, f);
-    items.value = items.value.map((it) => it.item_id === id ? { ...it, count: r.detected_count, subtotal: (r.detected_count * it.unit_price).toFixed(2) } : it);
+    items.value = items.value.map((it) =>
+      it.item_id === id ? { ...it, count: r.detected_count, subtotal: (r.detected_count * it.unit_price).toFixed(2) } : it
+    );
+    previewCount.value = r.detected_count;
+    const imgUrl = r.annotated_image
+      ? `data:image/jpeg;base64,${r.annotated_image}`
+      : URL.createObjectURL(f);
+    scanPreview.value = { itemId: id, imageUrl: imgUrl, confidence: r.confidence_avg, prevCount, fromScan: !r.annotated_image };
   } catch (e) { toast.show("识别失败: " + e.message); }
   finally { scanningId.value = null; e.target.value = ""; }
+}
+
+function confirmScan() {
+  if (!scanPreview.value) return;
+  const p = scanPreview.value;
+  const item = items.value.find(it => it.item_id === p.itemId);
+  const count = previewCount.value;
+  if (count !== item?.count) {
+    items.value = items.value.map((it) =>
+      it.item_id === p.itemId ? { ...it, count, subtotal: (count * it.unit_price).toFixed(2) } : it
+    );
+    api.updateItem(route.params.id, p.itemId, { count });
+  }
+  if (p.fromScan) URL.revokeObjectURL(p.imageUrl);
+  scanPreview.value = null;
+}
+
+function closePreview() {
+  if (!scanPreview.value) return;
+  const p = scanPreview.value;
+  const item = items.value.find(it => it.item_id === p.itemId);
+  if (item && item.count !== p.prevCount) {
+    items.value = items.value.map((it) =>
+      it.item_id === p.itemId ? { ...it, count: p.prevCount, subtotal: (p.prevCount * it.unit_price).toFixed(2) } : it
+    );
+    api.updateItem(route.params.id, p.itemId, { count: p.prevCount });
+  }
+  if (p.fromScan) URL.revokeObjectURL(p.imageUrl);
+  scanPreview.value = null;
 }
 
 async function handleClose() {

@@ -51,6 +51,29 @@ class StickDetector:
             circles.append({"cx": int(x), "cy": int(y), "r": r, "score": float(c)})
         return circles
 
+    def draw_to_bytes(self, image_path: str, circles: list[dict] | None = None, conf: float = 0.25) -> bytes:
+        """Draw detected circles on the image and return as compressed JPEG bytes."""
+        img = cv2.imread(image_path)
+        if img is None:
+            raise FileNotFoundError(f"Cannot read image: {image_path}")
+        if circles is None:
+            circles = self.detect(image_path, conf=conf)
+        self._draw_circles(img, circles)
+        # resize to max 800px long side
+        h, w = img.shape[:2]
+        if max(h, w) > 800:
+            scale = 800 / max(h, w)
+            img = cv2.resize(img, (int(w * scale), int(h * scale)))
+        _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        return buf.tobytes()
+
+    def _draw_circles(self, img, circles: list[dict]) -> None:
+        max_score = max(c["score"] for c in circles) if circles else 1
+        for c in circles:
+            ratio = max(0.4, min(1.0, c["score"] / max_score))
+            cv2.circle(img, (c["cx"], c["cy"]), c["r"], (0, int(255 * ratio), 0), 2)
+            cv2.circle(img, (c["cx"], c["cy"]), 2, (0, 0, 255), 3)
+
     def draw(
         self,
         image_path: str,
@@ -62,19 +85,9 @@ class StickDetector:
         img = cv2.imread(image_path)
         if img is None:
             raise FileNotFoundError(f"Cannot read image: {image_path}")
-
         if circles is None:
             circles = self.detect(image_path, conf=conf)
-
-        max_score = max(c["score"] for c in circles) if circles else 1
-        for c in circles:
-            ratio = max(0.4, min(1.0, c["score"] / max_score))
-            cv2.circle(
-                img, (c["cx"], c["cy"]), c["r"],
-                (0, int(255 * ratio), 0), 2,
-            )
-            cv2.circle(img, (c["cx"], c["cy"]), 2, (0, 0, 255), 3)
-
+        self._draw_circles(img, circles)
         out = output_path or str(Path(image_path).parent / "debug_output.png")
         cv2.imwrite(out, img)
 

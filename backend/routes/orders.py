@@ -1,5 +1,6 @@
 """Order routes — create, view, add items, scan, close."""
 
+import base64
 import shutil
 import tempfile
 from pathlib import Path
@@ -20,7 +21,7 @@ from db.queries import (
     record_log,
 )
 from routes._deps import current_user
-from services.detection import detect_sticks
+from services.detection import detect_sticks, draw_detection
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -141,9 +142,20 @@ def scan_item(
         count = len(circles)
         conf_avg = sum(c["score"] for c in circles) / count if count else 0.0
 
+        # Generate annotated image
+        if circles:
+            annotated_bytes = draw_detection(tmp_path, circles)
+            annotated_b64 = base64.b64encode(annotated_bytes).decode()
+        else:
+            annotated_b64 = None
+
         db = get_session()
         update_order_item_count(db, item_id, count)
 
-        return {"detected_count": count, "confidence_avg": round(conf_avg, 4)}
+        return {
+            "detected_count": count,
+            "confidence_avg": round(conf_avg, 4),
+            "annotated_image": annotated_b64,
+        }
     finally:
         Path(tmp_path).unlink(missing_ok=True)
