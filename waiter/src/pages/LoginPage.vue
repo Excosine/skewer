@@ -86,8 +86,8 @@
                   <input v-model="captchaInput" type="text" required maxlength="4"
                     placeholder="输入验证码" />
                 </div>
-                <canvas ref="captchaCanvas" @click="generateCaptcha"
-                  class="captcha-canvas" />
+                <img v-if="captchaUrl" :src="captchaUrl" @click="refreshCaptcha"
+                  alt="验证码" class="captcha-canvas" />
               </div>
             </div>
 
@@ -112,11 +112,7 @@
         </div>
       </div>
 
-      <!-- Register link -->
-      <p class="register-link">
-        没有账号？
-        <router-link to="/register">注册新账号</router-link>
-      </p>
+
     </div>
   </div>
 </template>
@@ -125,6 +121,7 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
+import { api } from "../api";
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -132,88 +129,41 @@ const username = ref("");
 const password = ref("");
 const showPw = ref(false);
 const captchaInput = ref("");
-const captchaAnswer = ref("");
-const captchaCanvas = ref(null);
+const captchaKey = ref("");
+const captchaUrl = ref("");
 const error = ref("");
 const loading = ref(false);
 
-const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function generateCaptcha() {
-  const canvas = captchaCanvas.value;
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  canvas.width = 130;
-  canvas.height = 48;
-
-  // Dark background
-  ctx.fillStyle = "#1a1412";
-  ctx.fillRect(0, 0, 130, 48);
-
-  // Subtle warm inner glow
-  const grd = ctx.createRadialGradient(65, 24, 5, 65, 24, 70);
-  grd.addColorStop(0, "rgba(255,140,66,0.08)");
-  grd.addColorStop(1, "rgba(255,74,34,0)");
-  ctx.fillStyle = grd;
-  ctx.fillRect(0, 0, 130, 48);
-
-  // Noise dots
-  for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = `rgba(255,180,120,${0.05 + Math.random() * 0.1})`;
-    ctx.beginPath();
-    ctx.arc(Math.random() * 130, Math.random() * 48, 1 + Math.random() * 2, 0, Math.PI * 2);
-    ctx.fill();
+async function fetchCaptcha() {
+  try {
+    const data = await api.getCaptcha();
+    captchaKey.value = data.captcha_key;
+    captchaUrl.value = api.getCaptchaImageUrl(data.captcha_key);
+  } catch {
+    error.value = "获取验证码失败";
   }
+}
 
-  // Interference lines
-  for (let i = 0; i < 4; i++) {
-    ctx.strokeStyle = `rgba(255,150,100,${0.08 + Math.random() * 0.12})`;
-    ctx.lineWidth = 1 + Math.random();
-    ctx.beginPath();
-    ctx.moveTo(Math.random() * 130, Math.random() * 48);
-    ctx.lineTo(Math.random() * 130, Math.random() * 48);
-    ctx.stroke();
-  }
-
-  let code = "";
-  for (let i = 0; i < 4; i++) code += CHARS[Math.floor(Math.random() * CHARS.length)];
-  captchaAnswer.value = code;
-
-  // Draw characters with flame colors
-  ctx.font = "bold 22px 'Courier New', monospace";
-  ctx.textBaseline = "middle";
-  const colors = ["#FFD700", "#FF8C42", "#FF4A22", "#FFB347"];
-  code.split("").forEach((ch, i) => {
-    const rot = (Math.random() - 0.5) * 0.5;
-    const y = 24 + (Math.random() - 0.5) * 8;
-    const x = 12 + i * 28;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(rot);
-    ctx.shadowColor = colors[i % 4];
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = colors[i % 4];
-    ctx.fillText(ch, 0, 0);
-    ctx.shadowBlur = 0;
-    ctx.restore();
-  });
+function refreshCaptcha() {
+  captchaInput.value = "";
+  fetchCaptcha();
 }
 
 async function submit() {
   error.value = "";
-  if (captchaInput.value.toUpperCase() !== captchaAnswer.value) {
-    error.value = "验证码错误";
-    generateCaptcha();
-    captchaInput.value = "";
-    return;
-  }
   loading.value = true;
-  try { await auth.login(username.value, password.value); router.replace("/"); }
-  catch (e) { error.value = e.message; }
-  finally { loading.value = false; }
+  try {
+    await auth.login(username.value, password.value, captchaKey.value, captchaInput.value);
+    router.replace("/");
+  } catch (e) {
+    error.value = e.message;
+    refreshCaptcha();
+  } finally {
+    loading.value = false;
+  }
 }
 
-onMounted(generateCaptcha);
+onMounted(fetchCaptcha);
 </script>
 
 <style scoped>

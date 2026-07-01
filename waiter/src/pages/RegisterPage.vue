@@ -43,8 +43,8 @@
             <div class="flex gap-2">
               <input v-model="captchaInput" type="text" required maxlength="4"
                 class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-neutral-600 focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/30 outline-none transition-all uppercase tracking-widest" />
-              <canvas ref="captchaCanvas" @click="generateCaptcha"
-                class="rounded-xl cursor-pointer border border-white/10 w-[120px] h-[46px] shrink-0" />
+              <img v-if="captchaUrl" :src="captchaUrl" @click="refreshCaptcha"
+                alt="验证码" class="rounded-xl cursor-pointer border border-white/10 w-[120px] h-[46px] shrink-0" />
             </div>
             <p class="text-xs text-neutral-600 mt-1">点击图片刷新验证码</p>
           </div>
@@ -74,76 +74,48 @@ const username = ref("");
 const realName = ref("");
 const password = ref("");
 const captchaInput = ref("");
-const captchaAnswer = ref("");
-const captchaCanvas = ref(null);
+const captchaKey = ref("");
+const captchaUrl = ref("");
 const error = ref("");
 const success = ref("");
 const loading = ref(false);
 
-const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+async function fetchCaptcha() {
+  try {
+    const data = await api.getCaptcha();
+    captchaKey.value = data.captcha_key;
+    captchaUrl.value = api.getCaptchaImageUrl(data.captcha_key);
+  } catch {
+    error.value = "获取验证码失败";
+  }
+}
 
-function generateCaptcha() {
-  const canvas = captchaCanvas.value;
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  canvas.width = 120;
-  canvas.height = 46;
-  ctx.fillStyle = "#f5f5f0";
-  ctx.fillRect(0, 0, 120, 46);
-  let code = "";
-  for (let i = 0; i < 4; i++) code += CHARS[Math.floor(Math.random() * CHARS.length)];
-  captchaAnswer.value = code;
-  for (let i = 0; i < 6; i++) {
-    ctx.strokeStyle = `rgba(180,150,100,${0.1 + Math.random() * 0.2})`;
-    ctx.lineWidth = 1 + Math.random() * 2;
-    ctx.beginPath();
-    ctx.moveTo(Math.random() * 120, Math.random() * 46);
-    ctx.lineTo(Math.random() * 120, Math.random() * 46);
-    ctx.stroke();
-  }
-  ctx.font = "bold 24px 'Courier New', monospace";
-  ctx.textBaseline = "middle";
-  const x0 = 10;
-  code.split("").forEach((ch, i) => {
-    const rot = (Math.random() - 0.5) * 0.4;
-    const y = 24 + (Math.random() - 0.5) * 8;
-    ctx.save();
-    ctx.translate(x0 + i * 26, y);
-    ctx.rotate(rot);
-    ctx.fillStyle = ["#a16207", "#b45309", "#d97706", "#92400e"][i % 4];
-    ctx.fillText(ch, 0, 0);
-    ctx.restore();
-  });
-  for (let i = 0; i < 30; i++) {
-    ctx.fillStyle = `rgba(120,80,40,${Math.random() * 0.3})`;
-    ctx.beginPath();
-    ctx.arc(Math.random() * 120, Math.random() * 46, 1 + Math.random() * 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
+function refreshCaptcha() {
+  captchaInput.value = "";
+  fetchCaptcha();
 }
 
 async function submit() {
   error.value = "";
   success.value = "";
-  if (captchaInput.value.toUpperCase() !== captchaAnswer.value) {
-    error.value = "验证码错误";
-    generateCaptcha();
-    captchaInput.value = "";
-    return;
-  }
   loading.value = true;
   try {
-    await api.register({ username: username.value, password: password.value, real_name: realName.value });
+    await api.register({
+      username: username.value,
+      password: password.value,
+      real_name: realName.value,
+      captcha_key: captchaKey.value,
+      captcha_code: captchaInput.value,
+    });
     success.value = "注册成功，正在跳转登录...";
     setTimeout(() => router.replace("/login"), 1500);
   } catch (e) {
     error.value = e.message;
-    generateCaptcha();
-    captchaInput.value = "";
+    refreshCaptcha();
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(generateCaptcha);
+onMounted(fetchCaptcha);
 </script>

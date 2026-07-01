@@ -158,36 +158,33 @@ def get_captcha_image(captcha_key: str):
 @router.post("/login", response_model=LoginResponse)
 def login(body: LoginBody):
     # 验证验证码
-    #######
-    #MERGE ERROR
-    #######
-    # if body.captcha_key not in captcha_store:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="验证码不存在，请重新获取"
-    #     )
-    #
-    # captcha_data = captcha_store[body.captcha_key]
-    #
-    # # 检查是否过期
-    # if time.time() > captcha_data['expire_time']:
-    #     del captcha_store[body.captcha_key]
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="验证码已过期，请重新获取"
-    #     )
-    #
-    # # 验证码不区分大小写
-    # if body.captcha_code.upper() != captcha_data['code'].upper():
-    #     # 验证失败后删除验证码
-    #     del captcha_store[body.captcha_key]
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="验证码错误"
-    #     )
-    #
-    # # 验证成功后删除验证码（一次性使用）
-    # del captcha_store[body.captcha_key]
+    if body.captcha_key not in captcha_store:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码不存在，请重新获取"
+        )
+
+    captcha_data = captcha_store[body.captcha_key]
+
+    # 检查是否过期
+    if time.time() > captcha_data['expire_time']:
+        del captcha_store[body.captcha_key]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码已过期，请重新获取"
+        )
+
+    # 验证码不区分大小写
+    if body.captcha_code.upper() != captcha_data['code'].upper():
+        # 验证失败后删除验证码
+        del captcha_store[body.captcha_key]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码错误"
+        )
+
+    # 验证成功后删除验证码（一次性使用）
+    del captcha_store[body.captcha_key]
 
     # 验证用户名密码
     db = get_session()

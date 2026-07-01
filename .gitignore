@@ -23,10 +23,14 @@ backend/runtime/*
 
 # Dataset images (large files)
 backend/dataset/
+backend/.venv/
 backend/uv.lock
-frontend/node_modules
-frontend/package-lock.json
+admin/node_modules
+admin/package-lock.json
 skills/
+
+# Logs
+logs/
 
 # Node
 node_modules/

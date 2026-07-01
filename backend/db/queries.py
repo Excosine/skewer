@@ -85,9 +85,6 @@ def update_table_status(db: Session, table_id: int, status: int):
     table.status = 0
     db.commit()
 
-######
-#MERGE EORROR
-######
 def reset_table_status(db: Session, table_code: str):
     """结账后将清洁中桌子重置为空闲"""
     table = db.query(Table).filter(Table.table_code == table_code).first()
@@ -325,7 +322,7 @@ def daily_skewer_sales(db: Session, date_str: str | None = None) -> list[dict]:
     if date_str is None:
         date_str = date.today().isoformat()
 
-    from sqlalchemy import func, cast, Date
+    from sqlalchemy import func
     rows = (
         db.query(
             func.date(Order.paid_at).label("sale_date"),
@@ -350,38 +347,6 @@ def daily_skewer_sales(db: Session, date_str: str | None = None) -> list[dict]:
         }
         for r in rows
     ]
-####
-#MERGE ERROR
-####
-# def daily_skewer_sales(db: Session, date_str: str | None = None) -> list[dict]:
-#     if date_str is None:
-#         date_str = date.today().isoformat()
-#
-#     from sqlalchemy import func, cast, Date
-#     rows = (
-#         db.query(
-#             cast(Order.paid_at, Date).label("sale_date"),
-#             SkewerType.name.label("skewer_name"),
-#             func.sum(OrderItem.count).label("total_count"),
-#             func.sum(OrderItem.subtotal).label("total_amount"),
-#         )
-#         .join(OrderItem, OrderItem.order_id == Order.id)
-#         .join(SkewerType, SkewerType.id == OrderItem.skewer_type_id)
-#         .filter(Order.status == 1)
-#         .filter(cast(Order.paid_at, Date) == date_str)
-#         .group_by(cast(Order.paid_at, Date), SkewerType.name)
-#         .order_by(func.sum(OrderItem.subtotal).desc())
-#         .all()
-#     )
-#     return [
-#         {
-#             "sale_date": str(r.sale_date),
-#             "skewer_name": r.skewer_name,
-#             "total_count": r.total_count,
-#             "total_amount": float(r.total_amount or 0),
-#         }
-#         for r in rows
-#     ]
 
 # ── operation logs ────────────────────────────
 
@@ -495,39 +460,3 @@ def daily_table_sales(db: Session, date_str: str | None = None) -> list[dict]:
         }
         for r in rows
     ]
-####
-#MERGE ERROR
-####
-# def daily_table_sales(db: Session, date_str: str | None = None) -> list[dict]:
-#     if date_str is None:
-#         date_str = date.today().isoformat()
-#
-#     from sqlalchemy import func, cast, Date
-#     rows = (
-#         db.query(
-#             cast(Order.paid_at, Date).label("sale_date"),
-#             TableZone.name.label("zone_name"),
-#             Table.table_code,
-#             func.count(Order.id).label("order_count"),
-#             func.sum(Order.total_count).label("total_skewers"),
-#             func.sum(Order.total_price).label("total_amount"),
-#         )
-#         .join(Table, Table.id == Order.table_id)
-#         .join(TableZone, TableZone.id == Table.zone_id)
-#         .filter(Order.status == 1)
-#         .filter(cast(Order.paid_at, Date) == date_str)
-#         .group_by(cast(Order.paid_at, Date), TableZone.name, Table.table_code)
-#         .order_by(func.sum(Order.total_price).desc())
-#         .all()
-#     )
-#     return [
-#         {
-#             "sale_date": str(r.sale_date),
-#             "zone_name": r.zone_name,
-#             "table_code": r.table_code,
-#             "order_count": r.order_count,
-#             "total_skewers": int(r.total_skewers or 0),
-#             "total_amount": float(r.total_amount or 0),
-#         }
-#         for r in rows
-#     ]
