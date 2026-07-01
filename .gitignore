@@ -26,4 +26,5 @@ backend/dataset/
 backend/uv.lock
 frontend/node_modules
 frontend/package-lock.json
+skills/
 

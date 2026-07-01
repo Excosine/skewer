@@ -16,6 +16,7 @@ async function request(path, opts = {}) {
 
 export const api = {
   login: (b) => request("/auth/login", { method: "POST", body: JSON.stringify(b) }),
+  register: (b) => request("/auth/register", { method: "POST", body: JSON.stringify(b) }),
   me: () => request("/auth/me"),
   tables: () => request("/tables"),
   tableDetail: (id) => request(`/tables/${id}`),
