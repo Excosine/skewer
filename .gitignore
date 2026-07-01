@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+backend/runtime/
+backend/stderr.txt
+backend/stdout.txt
+backend/test_detect.py
+backend/weights/
+waiter/node_modules/
+waiter/dist/
